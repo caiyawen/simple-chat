@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>webSocket聊天室</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <ul class="pages">
+    <li class="chat page">
+      <div class="chat-title">聊天室</div>
+      <div class="chatArea">
+        <ul class="messages" id="messages-box"></ul>
+      </div>
+      <input class="inputMessage" id="message" placeholder="Type here..."/>
+    </li>
+    <li class="login page">
+      <div class="form">
+        <h3 class="title">给自己取个昵称吧～</h3>
+        <input class="usernameInput" id="nickname" type="text" maxlength="14" />
+      </div>
+    </li>
+  </ul>
+</body>
+
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script>
+  var ws = new WebSocket("ws://192.168.18.52:8906");
+  var messageBox = document.getElementById('messages-box');
+  var $window = $(window);
+  var $loginPage = $('.login.page');
+  var $chatPage = $('.chat.page');
+  var isSelf;
+
+  function checkTime(i) {
+    if (i < 10) {
+      i = `0${i}`;
+    }
+    return i;
+  }
+
+  function sendMessage() {
+    let now = new Date();
+    let sendHours= checkTime(now.getHours());
+    let sendMinutes = checkTime(now.getMinutes());
+    let sendSeconds = checkTime(now.getSeconds());
+    let sendTime = `${sendHours}:${sendMinutes}:${sendSeconds}`;
+    var content = $('#message').val();
+    var nickname = $('#nickname').val();
+    var sendObj = { nickname, content, sendTime };
+    // 发送消息
+    ws.send(JSON.stringify(sendObj));
+    $('#message').val('');
+    $('#message').focus();
+    isSelf = true;
+  }
+
+  function appendMessage(message) {
+    var messageElem = document.createElement("li");
+    if (isSelf) {
+      messageElem.innerHTML = `
+        <div class="message-right">
+          <span>${message.content}</span>
+          <span class="username">${message.nickname}</span>
+          <div class="message-time">${message.sendTime}</div>
+        </div>
+      `;
+    } else {
+      messageElem.innerHTML = `
+        <div>
+          <span class="username">${message.nickname}: </span>
+          <span>${message.content}</span>
+        </div>
+        <div class="message-time">${message.sendTime}</div>
+      `;
+    }
+    messageBox.appendChild(messageElem);
+  }
+
+  ws.onopen = function (e) {
+    console.log('Connection to server opened');
+  }
+
+  // 接收消息
+  ws.onmessage = function(e) {
+    var message = JSON.parse(e.data);
+    console.log(e);
+    appendMessage(message);
+    isSelf = false;
+  }
+
+  $window.keydown(function (event) {
+    if (event.which === 13) {
+      var content = $('#message').val();
+      if (content) {
+        sendMessage();
+        return;
+      }
+      $loginPage.fadeOut();
+      $chatPage.show();
+    }
+  });
+</script>
+
+</html>
